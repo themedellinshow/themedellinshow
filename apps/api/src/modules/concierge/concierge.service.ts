@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { ConciergeSessionService, SessionState } from './concierge-session.service';
 
 export interface ItineraryRequestDto {
   language: 'es' | 'en' | 'pt';
@@ -21,7 +22,14 @@ export interface ChatMessageDto {
   context?: {
     interests?: string[];
     currentLocation?: string;
+    lgbtqFriendly?: boolean;
   };
+}
+
+export interface ChatResponse {
+  sessionId: string;
+  response: string;
+  cacheHit?: boolean;
 }
 
 @Injectable()
@@ -31,6 +39,7 @@ export class ConciergeService {
   constructor(
     private httpService: HttpService,
     private config: ConfigService,
+    private sessions: ConciergeSessionService,
   ) {
     this.aiGatewayUrl = this.config.get('AI_GATEWAY_URL', 'http://localhost:3002');
   }
@@ -51,38 +60,91 @@ export class ConciergeService {
     return response.data;
   }
 
-  async chat(userId: string, dto: ChatMessageDto): Promise<{ response: string; sessionId: string }> {
-    // For now, just forward to AI Gateway
-    // In the future, this could include conversation history from Redis
-    const response = await firstValueFrom(
-      this.httpService.post(`${this.aiGatewayUrl}/ai/v1/concierge/chat`, {
-        sessionId: dto.sessionId || `${userId}-${Date.now()}`,
-        message: dto.message,
-        language: dto.language,
-        context: dto.context,
-      }),
+  async chat(userId: string, dto: ChatMessageDto): Promise<ChatResponse> {
+    // 1. Get or create session (backed by Redis)
+    const session = await this.sessions.getOrCreate(
+      dto.sessionId,
+      userId,
+      dto.language,
+      dto.context,
     );
 
-    return response.data;
+    // 2. Persist user turn
+    await this.sessions.appendTurn(session.sessionId, {
+      role: 'user',
+      content: dto.message,
+      timestamp: Date.now(),
+    });
+
+    // 3. Send to AI Gateway with conversation history (variable block)
+    let assistantText = '';
+    let cacheHit: boolean | undefined;
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`${this.aiGatewayUrl}/ai/v1/concierge/chat`, {
+          sessionId: session.sessionId,
+          language: dto.language,
+          context: session.context,
+          history: this.buildHistoryForAi(session),
+          message: dto.message,
+        }),
+      );
+      assistantText = response.data?.response ?? '';
+      cacheHit = response.data?.cacheHit;
+    } catch {
+      // Graceful degradation if AI gateway is down
+      assistantText =
+        dto.language === 'es'
+          ? 'Estoy teniendo problemas técnicos, intenta de nuevo en un momento.'
+          : dto.language === 'pt'
+            ? 'Estou com problemas técnicos, tente novamente em instantes.'
+            : 'I am having technical issues, please try again in a moment.';
+    }
+
+    // 4. Persist assistant turn
+    await this.sessions.appendTurn(session.sessionId, {
+      role: 'assistant',
+      content: assistantText,
+      timestamp: Date.now(),
+    });
+
+    return {
+      sessionId: session.sessionId,
+      response: assistantText,
+      cacheHit,
+    };
+  }
+
+  async getSession(sessionId: string) {
+    return this.sessions.getSession(sessionId);
+  }
+
+  async listUserSessions(userId: string) {
+    return this.sessions.listUserSessions(userId);
+  }
+
+  async deleteSession(sessionId: string, userId: string): Promise<void> {
+    return this.sessions.deleteSession(sessionId, userId);
   }
 
   async getRecommendations(
     userId: string,
-    preferences: {
-      interests: string[];
-      budget: string;
-      lgbtqFriendly?: boolean;
-    },
+    preferences: { interests: string[]; budget: string; lgbtqFriendly?: boolean },
   ): Promise<any> {
-    // This would fetch personalized recommendations based on user history
-    // and preferences, using AI Gateway for ranking/filtering
     const response = await firstValueFrom(
       this.httpService.post(`${this.aiGatewayUrl}/ai/v1/concierge/recommend`, {
         userId,
         preferences,
       }),
     );
-
     return response.data;
+  }
+
+  private buildHistoryForAi(session: SessionState) {
+    // Send last N turns to stay within token budget
+    return session.turns.slice(-20).map((t) => ({
+      role: t.role,
+      content: t.content,
+    }));
   }
 }
