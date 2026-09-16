@@ -1,0 +1,32 @@
+{
+  "name": "themedellinshow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Medellín Show with Héctor - Tourism discovery and booking platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "api:dev": "npm run dev -w apps/api",
+    "api:build": "npm run build -w apps/api",
+    "api:test": "npm run test -w apps/api",
+    "ai-gateway:dev": "npm run dev -w apps/ai-gateway",
+    "ai-gateway:build": "npm run build -w apps/ai-gateway",
+    "db:migrate": "npm run migrate -w apps/api",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"**/*.ts\"",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "prettier": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
