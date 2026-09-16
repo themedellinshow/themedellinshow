@@ -49,25 +49,57 @@ export class AnalyticsService {
   async kpis(dto: AnalyticsRangeDto) {
     const { from, to } = this.parseRange(dto);
 
-    const bookingAgg = await this.bookingRepo
-      .createQueryBuilder('b')
-      .select('COUNT(*)', 'bookings')
-      .addSelect('COALESCE(SUM(b.totalCop),0)', 'gmv')
-      .addSelect(`COALESCE(SUM(b.serviceFee),0)`, 'fees')
-      .addSelect(
-        `COUNT(*) FILTER (WHERE b.status = 'confirmed' OR b.status = 'paid' OR b.status = 'completed')`,
-        'confirmed',
-      )
-      .addSelect(`COUNT(*) FILTER (WHERE b.status = 'cancelled')`, 'cancelled')
-      .where('b.createdAt BETWEEN :from AND :to', { from, to })
-      .getRawOne<{ bookings: string; gmv: string; fees: string; confirmed: string; cancelled: string }>();
+    const bookingAgg =
+      (await this.bookingRepo
+        .createQueryBuilder('b')
+        .select('COUNT(*)', 'bookings')
+        .addSelect('COALESCE(SUM(b.totalCop),0)', 'gmv')
+        .addSelect(`COALESCE(SUM(b.serviceFee),0)`, 'fees')
+        .addSelect(
+          `COUNT(*) FILTER (WHERE b.status = 'confirmed' OR b.status = 'paid' OR b.status = 'completed')`,
+          'confirmed',
+        )
+        .addSelect(`COUNT(*) FILTER (WHERE b.status = 'cancelled')`, 'cancelled')
+        .where('b.createdAt BETWEEN :from AND :to', { from, to })
+        .getRawOne()) as
+        | { bookings: string; gmv: string; fees: string; confirmed: string; cancelled: string }
+        | undefined;
 
-    const ratingAgg = await this.reviewRepo
-      .createQueryBuilder('r')
-      .select('COALESCE(AVG(r.rating),0)', 'avgRating')
-      .addSelect('COUNT(*)', 'reviews')
-      .where('r.createdAt BETWEEN :from AND :to', { from, to })
-      .getRawOne<{ avgRating: string; reviews: string }>();
+    const stats = {
+      bookings: 0,
+      confirmed: 0,
+      cancelled: 0,
+      gmvCop: 0,
+      serviceFeesCop: 0,
+      ...(bookingAgg
+        ? {
+            bookings: parseInt(bookingAgg.bookings, 10) || 0,
+            confirmed: parseInt(bookingAgg.confirmed, 10) || 0,
+            cancelled: parseInt(bookingAgg.cancelled, 10) || 0,
+            gmvCop: parseFloat(bookingAgg.gmv) || 0,
+            serviceFeesCop: parseFloat(bookingAgg.fees) || 0,
+          }
+        : {}),
+    };
+
+    const ratingAgg =
+      (await this.reviewRepo
+        .createQueryBuilder('r')
+        .select('COALESCE(AVG(r.rating),0)', 'avgRating')
+        .addSelect('COUNT(*)', 'reviews')
+        .where('r.createdAt BETWEEN :from AND :to', { from, to })
+        .getRawOne()) as { avgRating: string; reviews: string } | undefined;
+
+    const reviewStats = {
+      avgRating: 0,
+      reviews: 0,
+      ...(ratingAgg
+        ? {
+            avgRating: +(parseFloat(ratingAgg.avgRating) || 0).toFixed(2),
+            reviews: parseInt(ratingAgg.reviews, 10) || 0,
+          }
+        : {}),
+    };
 
     const experienceCount = await this.experienceRepo.count({ where: { status: 'active' } });
     const userCount = await this.userRepo.count();
@@ -75,17 +107,15 @@ export class AnalyticsService {
 
     return {
       range: { from, to },
-      bookings: parseInt(bookingAgg.bookings, 10) || 0,
-      confirmed: parseInt(bookingAgg.confirmed, 10) || 0,
-      cancelled: parseInt(bookingAgg.cancelled, 10) || 0,
+      bookings: stats.bookings,
+      confirmed: stats.confirmed,
+      cancelled: stats.cancelled,
       conversionRate:
-        (parseInt(bookingAgg.bookings, 10) || 0) > 0
-          ? +(((parseInt(bookingAgg.confirmed, 10) || 0) / parseInt(bookingAgg.bookings, 10)) * 100).toFixed(2)
-          : 0,
-      gmvCop: parseFloat(bookingAgg.gmv) || 0,
-      serviceFeesCop: parseFloat(bookingAgg.fees) || 0,
-      avgRating: +((parseFloat(ratingAgg.avgRating) || 0) / 1).toFixed(2),
-      reviews: parseInt(ratingAgg.reviews, 10) || 0,
+        stats.bookings > 0 ? +((stats.confirmed / stats.bookings) * 100).toFixed(2) : 0,
+      gmvCop: stats.gmvCop,
+      serviceFeesCop: stats.serviceFeesCop,
+      avgRating: reviewStats.avgRating,
+      reviews: reviewStats.reviews,
       activeExperiences: experienceCount,
       totalUsers: userCount,
       totalBookingsAllTime: bookingTotal,
@@ -135,7 +165,7 @@ export class AnalyticsService {
       .limit(limit)
       .getRawMany<{ experienceId: string; bookings: string; gmv: string }>();
 
-    const votes: Record<string, number> = {};
+    const votes: Record<string, { avg: number; count: number }> = {};
     const ratings = await this.reviewRepo
       .createQueryBuilder('r')
       .select('r.experienceId', 'experienceId')

@@ -103,7 +103,7 @@ export class ReviewsService {
   async updateStatus(id: string, status: ReviewStatus, note?: string): Promise<Review> {
     const review = await this.findById(id);
     review.status = status;
-    review.moderationNote = note;
+    review.moderationNote = note ?? null;
     review.moderatedAt = new Date();
 
     const saved = await this.reviewRepo.save(review);

@@ -81,8 +81,8 @@ export class Review {
   @Column({ default: false })
   verified: boolean; // Verified purchase review
 
-  @Column({ nullable: true })
-  moderationNote: string;
+  @Column({ type: 'text', nullable: true })
+  moderationNote: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
   moderatedAt: Date;

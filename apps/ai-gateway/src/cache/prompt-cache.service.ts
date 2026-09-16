@@ -49,7 +49,7 @@ export class PromptCacheService {
           text: request.stableBlock,
           cache_control: { type: 'ephemeral' }, // Mark for caching
         },
-      ],
+      ] as unknown as string,
       messages: [
         {
           role: 'user',

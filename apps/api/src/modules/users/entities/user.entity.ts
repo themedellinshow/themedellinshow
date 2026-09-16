@@ -59,7 +59,7 @@ export class User {
   lastLoginAt: Date;
 
   @Column({ nullable: true, select: false })
-  refreshToken: string;
+  refreshToken: string | null;
 
   @CreateDateColumn()
   createdAt: Date;
