@@ -12,6 +12,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ContentModule } from './modules/content/content.module';
 import { NewsModule } from './modules/news/news.module';
 import { ConciergeModule } from './modules/concierge/concierge.module';
+import { MarketplaceModule } from './modules/marketplace/marketplace.module';
+import { CrmModule } from './modules/crm/crm.module';
 
 @Module({
   imports: [
@@ -61,6 +63,10 @@ import { ConciergeModule } from './modules/concierge/concierge.module';
     ContentModule,
     NewsModule,
     ConciergeModule,
+
+    // Ecosystem modules
+    MarketplaceModule,
+    CrmModule,
   ],
 })
 export class AppModule {}
