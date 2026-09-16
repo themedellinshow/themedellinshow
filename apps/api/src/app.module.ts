@@ -42,7 +42,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
         password: config.get('DB_PASSWORD', ''),
         database: config.get('DB_NAME', 'medellinshow'),
         autoLoadEntities: true,
-        synchronize: config.get('NODE_ENV') === 'development',
+        synchronize: ['development', 'test'].includes(config.get('NODE_ENV') ?? ''),
         logging: config.get('NODE_ENV') === 'development',
       }),
     }),
