@@ -26,6 +26,9 @@
     "@typescript-eslint/parser": "^6.13.0",
     "prettier": "^3.1.0"
   },
+  "dependencies": {
+    "pg": "8.11.3"
+  },
   "engines": {
     "node": ">=20.0.0"
   }

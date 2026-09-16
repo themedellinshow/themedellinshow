@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
+import { join } from 'path';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ExperiencesModule } from './modules/experiences/experiences.module';
@@ -22,7 +23,12 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env.local', '.env'],
+      envFilePath: [
+        join(__dirname, '../../../.env'),
+        join(__dirname, '../../../.env.local'),
+        '.env.local',
+        '.env',
+      ],
     }),
 
     TypeOrmModule.forRootAsync({
