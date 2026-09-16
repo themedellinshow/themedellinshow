@@ -14,6 +14,9 @@ import { NewsModule } from './modules/news/news.module';
 import { ConciergeModule } from './modules/concierge/concierge.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { CrmModule } from './modules/crm/crm.module';
+import { PartnersModule } from './modules/partners/partners.module';
+import { ReferralsModule } from './modules/referrals/referrals.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -67,6 +70,9 @@ import { CrmModule } from './modules/crm/crm.module';
     // Ecosystem modules
     MarketplaceModule,
     CrmModule,
+    PartnersModule,
+    ReferralsModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}
