@@ -411,3 +411,90 @@ export interface ApiErrorBody {
   message: string | string[];
   error?: string;
 }
+
+export type CrmLeadSource =
+  | 'organic'
+  | 'referral'
+  | 'social'
+  | 'ads'
+  | 'concierge'
+  | 'partner'
+  | 'other';
+
+export type CrmLifecycleStage =
+  | 'lead'
+  | 'prospect'
+  | 'customer'
+  | 'repeat_customer'
+  | 'inactive';
+
+export interface CrmContact {
+  id: string;
+  userId?: string | null;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  country?: string | null;
+  leadSource: CrmLeadSource;
+  lifecycleStage: CrmLifecycleStage;
+  interests?: string[] | null;
+  tags?: string[] | null;
+  totalBookings: number;
+  lifetimeValueCop: string;
+  firstBookingAt?: string | null;
+  lastBookingAt?: string | null;
+  lastContactedAt?: string | null;
+  emailOptIn: boolean;
+  whatsappOptIn: boolean;
+  smsOptIn: boolean;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CrmInteractionType =
+  | 'email_sent'
+  | 'email_opened'
+  | 'whatsapp_sent'
+  | 'whatsapp_replied'
+  | 'concierge_chat'
+  | 'booking_created'
+  | 'booking_completed'
+  | 'review_submitted'
+  | 'note';
+
+export type CrmInteractionChannel = 'email' | 'whatsapp' | 'sms' | 'app' | 'concierge' | 'manual';
+
+export interface CrmInteraction {
+  id: string;
+  contactId: string;
+  type: CrmInteractionType;
+  channel: CrmInteractionChannel;
+  subject?: string | null;
+  content?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface CrmUpsertInput {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  country?: string;
+  leadSource?: CrmLeadSource;
+  tags?: string[];
+  emailOptIn?: boolean;
+  whatsappOptIn?: boolean;
+  smsOptIn?: boolean;
+}
+
+export interface CrmLogInteractionInput {
+  contactId?: string;
+  email?: string;
+  type: CrmInteractionType;
+  channel: CrmInteractionChannel;
+  subject?: string;
+  content?: string;
+}

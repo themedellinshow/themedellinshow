@@ -6,6 +6,12 @@ import type {
   ConciergeChatResult,
   ContentQuery,
   CreateBookingInput,
+  CrmContact,
+  CrmInteraction,
+  CrmLeadSource,
+  CrmLifecycleStage,
+  CrmLogInteractionInput,
+  CrmUpsertInput,
   Event,
   Experience,
   ExperienceQuery,
@@ -133,4 +139,24 @@ export const referralsApi = {
     api<{ code: string; message: string }>(`/referrals/share${qs({ name, language })}`, {
       auth: 'access',
     }),
+};
+
+export const crmApi = {
+  list: (query: {
+    lifecycleStage?: CrmLifecycleStage;
+    leadSource?: CrmLeadSource;
+    tag?: string;
+    page?: number;
+    limit?: number;
+  } = {}) => api<Paginated<CrmContact>>(`/crm/contacts${qs(query)}`, { auth: 'access' }),
+  detail: (id: string) => api<CrmContact>(`/crm/contacts/${id}`, { auth: 'access' }),
+  interactions: (id: string) => api<CrmInteraction[]>(`/crm/contacts/${id}/interactions`, { auth: 'access' }),
+  create: (input: CrmUpsertInput) =>
+    api<CrmContact>('/crm/contacts', { method: 'POST', body: input, auth: 'access' }),
+  logInteraction: (input: CrmLogInteractionInput) =>
+    api<CrmInteraction>('/crm/interactions', { method: 'POST', body: input, auth: 'access' }),
+  updateLifecycle: (id: string, stage: CrmLifecycleStage) =>
+    api<CrmContact>(`/crm/contacts/${id}/lifecycle`, { method: 'PATCH', body: { stage }, auth: 'access' }),
+  addTags: (id: string, tags: string[]) =>
+    api<CrmContact>(`/crm/contacts/${id}/tags`, { method: 'PATCH', body: { tags }, auth: 'access' }),
 };

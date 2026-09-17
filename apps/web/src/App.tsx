@@ -10,6 +10,7 @@ import { GuideDetailPage } from './pages/GuideDetailPage';
 import { EventDetailPage } from './pages/EventDetailPage';
 import { ConciergePage } from './pages/ConciergePage';
 import { ProfilePage } from './pages/ProfilePage';
+import { AdminCrmPage } from './pages/AdminCrmPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -28,6 +29,7 @@ export function App() {
         <Route path="/book/:id" element={<BookingPage />} />
         <Route path="/concierge" element={<ConciergePage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/admin/crm" element={<AdminCrmPage />} />
       </Route>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />

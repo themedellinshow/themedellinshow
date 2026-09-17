@@ -298,6 +298,11 @@ export function ProfilePage() {
       ) : null}
 
       <hr className="divider" />
+      {me?.role === 'admin' || me?.role === 'partner' ? (
+        <Button variant="outline" size="block" style={{ marginBottom: 8 }} onClick={() => navigate('/admin/crm')}>
+          Panel CRM (admin)
+        </Button>
+      ) : null}
       <Button variant="danger" size="block" onClick={logout}>
         Cerrar sesión
       </Button>
