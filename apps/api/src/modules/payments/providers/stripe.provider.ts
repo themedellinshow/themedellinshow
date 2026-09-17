@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
 import {
   PaymentProvider,
@@ -11,17 +12,36 @@ import {
 @Injectable()
 export class StripeProvider implements PaymentProvider {
   readonly name = 'stripe';
-  private stripe: Stripe;
+  readonly demo: boolean;
+
+  private stripe?: Stripe;
 
   constructor(private config: ConfigService) {
-    const secretKey = this.config.get('STRIPE_SECRET_KEY');
+    const secretKey = this.config.get<string>('STRIPE_SECRET_KEY') ?? '';
+    this.demo = !secretKey;
     if (secretKey) {
       this.stripe = new Stripe(secretKey, { apiVersion: '2023-10-16' });
     }
   }
 
   async createPaymentIntent(params: CreatePaymentParams): Promise<PaymentIntent> {
-    const intent = await this.stripe.paymentIntents.create({
+    if (this.demo) {
+      const id = `demo_pi_${randomBytes(6).toString('hex')}`;
+      return {
+        id,
+        clientSecret: `demo_secret_${id}`,
+        amount: params.amount,
+        currency: params.currency.toUpperCase(),
+        status: 'succeeded',
+        metadata: {
+          bookingId: params.bookingId,
+          userId: params.userId,
+          demo: 'true',
+        },
+      };
+    }
+
+    const intent = await this.stripe!.paymentIntents.create({
       amount: Math.round(params.amount * 100), // Stripe uses cents
       currency: params.currency.toLowerCase(),
       metadata: {
@@ -42,7 +62,16 @@ export class StripeProvider implements PaymentProvider {
   }
 
   async confirmPayment(paymentIntentId: string): Promise<PaymentIntent> {
-    const intent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+    if (this.demo) {
+      return {
+        id: paymentIntentId,
+        amount: 0,
+        currency: 'COP',
+        status: 'succeeded',
+        metadata: { demo: 'true' },
+      };
+    }
+    const intent = await this.stripe!.paymentIntents.retrieve(paymentIntentId);
     return {
       id: intent.id,
       amount: intent.amount / 100,
@@ -52,7 +81,11 @@ export class StripeProvider implements PaymentProvider {
   }
 
   async refund(paymentIntentId: string, amount?: number): Promise<RefundResult> {
-    const refund = await this.stripe.refunds.create({
+    if (this.demo) {
+      const id = `demo_re_${randomBytes(6).toString('hex')}`;
+      return { id, amount: amount ?? 0, status: 'succeeded' };
+    }
+    const refund = await this.stripe!.refunds.create({
       payment_intent: paymentIntentId,
       amount: amount ? Math.round(amount * 100) : undefined,
     });
@@ -65,7 +98,16 @@ export class StripeProvider implements PaymentProvider {
   }
 
   async getPayment(paymentIntentId: string): Promise<PaymentIntent> {
-    const intent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+    if (this.demo) {
+      return {
+        id: paymentIntentId,
+        amount: 0,
+        currency: 'COP',
+        status: 'succeeded',
+        metadata: { demo: 'true' },
+      };
+    }
+    const intent = await this.stripe!.paymentIntents.retrieve(paymentIntentId);
     return {
       id: intent.id,
       amount: intent.amount / 100,
@@ -75,9 +117,12 @@ export class StripeProvider implements PaymentProvider {
     };
   }
 
-  async handleWebhook(payload: any, signature: string) {
+  async handleWebhook(_payload: any, _signature: string) {
+    if (this.demo) {
+      throw new BadRequestException('Stripe webhook no está disponible en modo demo.');
+    }
     const webhookSecret = this.config.get('STRIPE_WEBHOOK_SECRET');
-    const event = this.stripe.webhooks.constructEvent(payload, signature, webhookSecret!);
+    const event = this.stripe!.webhooks.constructEvent(_payload, _signature, webhookSecret!);
 
     return {
       event: event.type,

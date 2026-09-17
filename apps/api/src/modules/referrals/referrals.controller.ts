@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -44,10 +45,10 @@ export class ReferralsController {
     };
   }
 
-  /** GET /api/v1/referrals/share — shareable text for WhatsApp/IG */
+  /** GET /api/v1/referrals/share?name=&language= — shareable text for WhatsApp/IG */
   @Get('share')
   @UseGuards(AuthGuard('jwt'))
-  async share(@CurrentUser() user: User, @Body() dto: ReferralAddressDto) {
+  async share(@CurrentUser() user: User, @Query() dto: ReferralAddressDto) {
     const referral = await this.referralsService.getOrCreateForUser(user.id);
     const name = dto.name || 'Héctor';
     const lang = dto.language || 'es';
