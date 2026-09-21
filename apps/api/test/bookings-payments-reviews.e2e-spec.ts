@@ -5,6 +5,9 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/common/app-setup';
 import { User } from '../src/modules/users/entities/user.entity';
+import { CrmContact } from '../src/modules/crm/entities/crm-contact.entity';
+import { CrmInteraction } from '../src/modules/crm/entities/crm-interaction.entity';
+import { BookingsReminderScheduler } from '../src/modules/bookings/bookings-reminder.scheduler';
 
 describe('Bookings-Payments-Reviews (e2e)', () => {
   let app: INestApplication;
@@ -329,6 +332,66 @@ describe('Bookings-Payments-Reviews (e2e)', () => {
     });
   });
 
+  describe('booking reminders', () => {
+    it('should enqueue and deliver a booking reminder for tomorrow via the scheduler', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/bookings')
+        .set('Authorization', `Bearer ${travelerToken}`)
+        .send({
+          experienceId: expActiveId,
+          bookingDate: tomorrowDate(),
+          startTime: '10:00',
+          participants: 2,
+          contactEmail: `bpr-rem-${stamp}@test.co`,
+          contactPhone: '+573001112233',
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/bookings/${res.body.id}/confirm`)
+        .set('Authorization', `Bearer ${hostAToken}`)
+        .expect(200);
+
+      const scheduler = app.get(BookingsReminderScheduler);
+      await scheduler.scanForReminders();
+
+      await waitFor(async () => {
+        const contact = await app
+          .get(DataSource)
+          .getRepository(CrmContact)
+          .findOne({ where: { email: traveler.email } });
+        if (!contact) return null;
+        const interaction = await app
+          .get(DataSource)
+          .getRepository(CrmInteraction)
+          .findOne({
+            where: { contactId: contact.id, type: 'email_sent' },
+            order: { createdAt: 'DESC' },
+          });
+        return interaction?.metadata?.notificationType === 'BOOKING_REMINDER'
+          ? interaction
+          : null;
+      }, 15000);
+    });
+
+    it('should not re-enqueue a reminder already delivered', async () => {
+      const contact = await app
+        .get(DataSource)
+        .getRepository(CrmContact)
+        .findOne({ where: { email: traveler.email } });
+      expect(contact).toBeDefined();
+
+      const interactionRepo = app.get(DataSource).getRepository(CrmInteraction);
+      const before = await interactionRepo.count({ where: { contactId: contact!.id } });
+
+      await app.get(BookingsReminderScheduler).scanForReminders();
+      await sleep(1500);
+
+      const after = await interactionRepo.count({ where: { contactId: contact!.id } });
+      expect(after).toBe(before);
+    });
+  });
+
   describe('reviews', () => {
     let reviewId: string;
 
@@ -435,6 +498,15 @@ describe('Bookings-Payments-Reviews (e2e)', () => {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function tomorrowDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 async function waitFor<T>(fn: () => Promise<T | null>, timeoutMs: number, stepMs = 300): Promise<T> {
