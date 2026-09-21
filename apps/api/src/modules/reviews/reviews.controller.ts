@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
   ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ReviewsService } from './reviews.service';
@@ -36,6 +37,11 @@ export class ReviewsController {
   @Roles('host', 'admin')
   async findAsHost(@CurrentUser() user: User) {
     return this.reviewsService.findByHost(user.id);
+  }
+
+  @Get('public/latest')
+  async findLatestPublic(@Query('limit') limit?: string) {
+    return this.reviewsService.findLatestPublic(Number(limit ?? 6));
   }
 
   @Get(':id')

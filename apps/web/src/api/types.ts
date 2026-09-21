@@ -381,6 +381,21 @@ export interface Review {
   experience?: Experience;
 }
 
+export interface PublicReview {
+  id: string;
+  rating: number;
+  content: string;
+  language: Language;
+  verified: boolean;
+  helpfulCount: number;
+  createdAt: string;
+  reviewerFirstName: string;
+  reviewerCountry: string | null;
+  experienceId: string;
+  experienceTitleEs: string | null;
+  experienceTitleEn: string | null;
+}
+
 export interface ReferralInfo {
   hasProgram: boolean;
   code?: string | null;

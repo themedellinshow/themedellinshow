@@ -21,6 +21,7 @@ import type {
   Paginated,
   Payment,
   Place,
+  PublicReview,
   ReferralInfo,
   ReferralRedeemResult,
   Review,
@@ -118,6 +119,7 @@ export const conciergeApi = {
 export const reviewsApi = {
   byExperience: (experienceId: string) =>
     api<Review[]>(`/reviews/experience/${experienceId}`),
+  latest: (limit = 6) => api<PublicReview[]>(`/reviews/public/latest${qs({ limit })}`),
   create: (input: {
     bookingId: string;
     rating: number;

@@ -493,6 +493,21 @@ describe('Bookings-Payments-Reviews (e2e)', () => {
         .expect(200);
       expect(res.body.map((r: any) => r.id)).toContain(reviewId);
     });
+
+    it('should expose the approved review in the public latest list (safe shape)', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/reviews/public/latest?limit=10')
+        .expect(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      const found = res.body.find((r: any) => r.id === reviewId);
+      expect(found).toBeDefined();
+      expect(found.rating).toBe(5);
+      expect(found.content).toContain('inolvidable');
+      expect(found.reviewerFirstName).toBeDefined();
+      expect(found.reviewerFirstName).not.toContain('@');
+      expect(found.experienceTitleEs).toBeDefined();
+      expect(found.email).toBeUndefined();
+    });
   });
 });
 

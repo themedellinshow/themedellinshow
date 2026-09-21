@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { IconChat, IconExplore, IconHome, IconMap, IconUser } from './Icons';
+import { Footer } from './Footer';
 import { useAuthStore } from '../store/auth';
 
 const navItems = [
@@ -40,6 +41,8 @@ export function Layout() {
       <main className="app-main">
         <Outlet />
       </main>
+
+      <Footer />
 
       <nav className="bottom-nav">
         {navItems.map(({ to, label, icon: Icon }) => (

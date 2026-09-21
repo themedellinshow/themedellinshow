@@ -90,6 +90,34 @@ export class ReviewsService {
     });
   }
 
+  /**
+   * Latest approved reviews for the public home page ("Reviews"/testimonials).
+   * Returns a safe shape that never exposes reviewer emails or PII.
+   */
+  async findLatestPublic(limit: number): Promise<unknown[]> {
+    const reviews = await this.reviewRepo.find({
+      where: { status: 'approved' },
+      relations: ['reviewer', 'experience'],
+      order: { createdAt: 'DESC' },
+      take: Math.min(Math.max(limit, 1), 20),
+    });
+
+    return reviews.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      content: r.content,
+      language: r.language,
+      verified: r.verified,
+      helpfulCount: r.helpfulCount,
+      createdAt: r.createdAt,
+      reviewerFirstName: r.reviewer?.firstName ?? 'Viajero',
+      reviewerCountry: r.reviewer?.country ?? null,
+      experienceId: r.experienceId,
+      experienceTitleEs: r.experience?.titleEs ?? null,
+      experienceTitleEn: r.experience?.titleEn ?? null,
+    }));
+  }
+
   async addHostResponse(id: string, hostId: string, response: string): Promise<Review> {
     const review = await this.findById(id);
     if (review.hostId !== hostId) {

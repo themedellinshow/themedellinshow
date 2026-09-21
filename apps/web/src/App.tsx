@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { AdminLayout } from './components/AdminLayout';
 import { HomePage } from './pages/HomePage';
 import { ExperiencesPage } from './pages/ExperiencesPage';
 import { ExperienceDetailPage } from './pages/ExperienceDetailPage';
@@ -29,7 +30,9 @@ export function App() {
         <Route path="/book/:id" element={<BookingPage />} />
         <Route path="/concierge" element={<ConciergePage />} />
         <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/admin/crm" element={<AdminCrmPage />} />
+      </Route>
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route path="crm" element={<AdminCrmPage />} />
       </Route>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
