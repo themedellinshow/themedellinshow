@@ -3,6 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { ConciergeSessionService, SessionState } from './concierge-session.service';
+import { CrmQueueService } from '../crm/crm.queue.service';
 
 export interface ItineraryRequestDto {
   language: 'es' | 'en' | 'pt';
@@ -40,24 +41,33 @@ export class ConciergeService {
     private httpService: HttpService,
     private config: ConfigService,
     private sessions: ConciergeSessionService,
+    private crmQueue: CrmQueueService,
   ) {
     this.aiGatewayUrl = this.config.get('AI_GATEWAY_URL', 'http://localhost:3002');
   }
 
   async generateItinerary(dto: ItineraryRequestDto): Promise<any> {
-    const response = await firstValueFrom(
-      this.httpService.post(`${this.aiGatewayUrl}/ai/v1/concierge/itinerary`, {
-        language: dto.language,
-        travelDates: { start: dto.startDate, end: dto.endDate },
-        interests: dto.interests,
-        budget: dto.budget,
-        groupType: dto.groupType,
-        specialRequests: dto.specialRequests,
-        lgbtqFriendly: dto.lgbtqFriendly,
-      }),
-    );
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`${this.aiGatewayUrl}/ai/v1/concierge/itinerary`, {
+          language: dto.language,
+          travelDates: { start: dto.startDate, end: dto.endDate },
+          interests: dto.interests,
+          budget: dto.budget,
+          groupType: dto.groupType,
+          specialRequests: dto.specialRequests,
+          lgbtqFriendly: dto.lgbtqFriendly,
+        }),
+      );
 
-    return response.data;
+      return response.data;
+    } catch {
+      return {
+        response: '',
+        cacheHit: false,
+        degraded: true,
+      };
+    }
   }
 
   async chat(userId: string, dto: ChatMessageDto): Promise<ChatResponse> {
@@ -108,6 +118,16 @@ export class ConciergeService {
       timestamp: Date.now(),
     });
 
+    // Track conversation in CRM (async via queue)
+    await this.crmQueue.trackInteraction({
+      userId,
+      type: 'concierge_chat',
+      channel: 'concierge',
+      subject: 'Concierge chat',
+      content: dto.message.slice(0, 2000),
+      metadata: { sessionId: session.sessionId },
+    });
+
     return {
       sessionId: session.sessionId,
       response: assistantText,
@@ -129,15 +149,32 @@ export class ConciergeService {
 
   async getRecommendations(
     userId: string,
-    preferences: { interests: string[]; budget: string; lgbtqFriendly?: boolean },
+    preferences: {
+      interests: string[];
+      budget: string;
+      language?: 'es' | 'en' | 'pt';
+      lgbtqFriendly?: boolean;
+    },
   ): Promise<any> {
-    const response = await firstValueFrom(
-      this.httpService.post(`${this.aiGatewayUrl}/ai/v1/concierge/recommend`, {
-        userId,
-        preferences,
-      }),
-    );
-    return response.data;
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`${this.aiGatewayUrl}/ai/v1/concierge/recommend`, {
+          userId,
+          preferences: {
+            interests: preferences.interests,
+            budget: preferences.budget,
+            lgbtqFriendly: preferences.lgbtqFriendly,
+          },
+        }),
+      );
+      return response.data;
+    } catch {
+      return {
+        response: '',
+        cacheHit: false,
+        degraded: true,
+      };
+    }
   }
 
   private buildHistoryForAi(session: SessionState) {
