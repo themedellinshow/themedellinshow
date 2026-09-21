@@ -4,9 +4,10 @@ import { NotificationsService } from './notifications.service';
 import { NotificationsProcessor } from './notifications.processor';
 import { TwilioProvider } from './providers/twilio.provider';
 import { SendGridProvider } from './providers/sendgrid.provider';
+import { CrmModule } from '../crm/crm.module';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: 'notifications' })],
+  imports: [BullModule.registerQueue({ name: 'notifications' }), CrmModule],
   providers: [
     NotificationsService,
     NotificationsProcessor,

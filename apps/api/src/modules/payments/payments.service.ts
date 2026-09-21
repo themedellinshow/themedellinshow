@@ -6,6 +6,7 @@ import { Queue } from 'bull';
 import { Payment, PaymentStatus } from './entities/payment.entity';
 import { PaymentProvider } from './interfaces/payment-provider.interface';
 import { BookingsService } from '../bookings/bookings.service';
+import { CrmQueueService } from '../crm/crm.queue.service';
 
 @Injectable()
 export class PaymentsService {
@@ -17,6 +18,7 @@ export class PaymentsService {
     private bookingsService: BookingsService,
     @InjectQueue('payments')
     private paymentQueue: Queue,
+    private crmQueue: CrmQueueService,
   ) {}
 
   async initiatePayment(bookingId: string, userId: string): Promise<{ payment: Payment; clientSecret?: string }> {
@@ -72,7 +74,10 @@ export class PaymentsService {
       await this.paymentRepo.save(payment);
       await this.bookingsService.markPaid(payment.bookingId);
 
-      // Queue post-payment tasks (notifications, etc.)
+      // Fan out event-driven CRM automations (gracefully degrades if Redis is down).
+      await this.crmQueue.triggerAutomations('payment_received', { userId: payment.userId });
+
+      // Queue post-payment tasks (notifications, referral fulfillment, etc.)
       await this.paymentQueue.add('payment-completed', { paymentId: payment.id });
     } else if (intent.status === 'failed') {
       payment.status = 'failed';

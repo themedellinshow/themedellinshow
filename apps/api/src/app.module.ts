@@ -44,6 +44,14 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
         autoLoadEntities: true,
         synchronize: ['development', 'test'].includes(config.get('NODE_ENV') ?? ''),
         logging: config.get('NODE_ENV') === 'development',
+        retryAttempts: 15,
+        retryDelay: 2000,
+        keepConnectionAlive: true,
+        extra: {
+          max: 20,
+          connect_timeout: 10000,
+          statement_timeout: 60000,
+        },
       }),
     }),
 

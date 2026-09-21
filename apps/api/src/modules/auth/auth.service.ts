@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { User, UserRole } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { CrmQueueService } from '../crm/crm.queue.service';
 
 export interface TokenPayload {
   sub: string;
@@ -30,6 +31,7 @@ export class AuthService {
     private userRepo: Repository<User>,
     private jwtService: JwtService,
     private config: ConfigService,
+    private crmQueue: CrmQueueService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthTokens> {
@@ -51,6 +53,10 @@ export class AuthService {
     });
 
     await this.userRepo.save(user);
+
+    // Link the new user to any CRM contact with the same email (async via queue)
+    await this.crmQueue.linkUser({ email: user.email, userId: user.id });
+
     return this.generateTokens(user);
   }
 

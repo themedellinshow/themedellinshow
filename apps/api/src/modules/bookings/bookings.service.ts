@@ -6,6 +6,7 @@ import { Queue } from 'bull';
 import { Booking, BookingStatus } from './entities/booking.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { ExperiencesService } from '../experiences/experiences.service';
+import { CrmQueueService } from '../crm/crm.queue.service';
 import { randomBytes } from 'crypto';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class BookingsService {
     @InjectRepository(Booking)
     private bookingRepo: Repository<Booking>,
     private expService: ExperiencesService,
+    private crmQueue: CrmQueueService,
     @InjectQueue('bookings')
     private bookingQueue: Queue,
   ) {}
@@ -62,6 +64,9 @@ export class BookingsService {
       bookingId: saved.id,
       hostId: experience.hostId,
     });
+
+    // Track in CRM (async via queue)
+    await this.trackBooking('created', saved);
 
     return saved;
   }
@@ -114,14 +119,18 @@ export class BookingsService {
     }
     booking.status = 'confirmed';
     booking.confirmedAt = new Date();
-    return this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.save(booking);
+    await this.trackBooking('confirmed', saved);
+    return saved;
   }
 
   async markPaid(id: string): Promise<Booking> {
     const booking = await this.findById(id);
     booking.status = 'paid';
     booking.paidAt = new Date();
-    return this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.save(booking);
+    await this.trackBooking('paid', saved);
+    return saved;
   }
 
   async complete(id: string): Promise<Booking> {
@@ -137,7 +146,9 @@ export class BookingsService {
       exp.totalBookings += 1;
     });
 
-    return this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.save(booking);
+    await this.trackBooking('completed', saved);
+    return saved;
   }
 
   async cancel(id: string, userId: string, reason: string): Promise<Booking> {
@@ -157,7 +168,9 @@ export class BookingsService {
       await this.bookingQueue.add('process-refund', { bookingId: booking.id });
     }
 
-    return this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.save(booking);
+    await this.trackBooking('cancelled', saved);
+    return saved;
   }
 
   async updateStatus(id: string, status: BookingStatus): Promise<Booking> {
@@ -171,5 +184,22 @@ export class BookingsService {
     const timestamp = Date.now().toString(36).toUpperCase();
     const random = randomBytes(3).toString('hex').toUpperCase();
     return `${prefix}-${timestamp}-${random}`;
+  }
+
+  private trackBooking(
+    type: 'created' | 'confirmed' | 'paid' | 'completed' | 'cancelled',
+    booking: Booking,
+  ): Promise<void> {
+    return this.crmQueue.trackBooking({
+      type,
+      email: booking.contactEmail,
+      bookingValueCop: Number(booking.totalCop),
+      metadata: {
+        bookingId: booking.id,
+        bookingReference: booking.bookingReference,
+        experienceId: booking.experienceId,
+        status: booking.status,
+      },
+    });
   }
 }

@@ -3,6 +3,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { MessagingProvider, EmailProvider } from './interfaces/messaging-provider.interface';
 import { NOTIFICATION_TEMPLATES } from './templates';
+import { CrmQueueService } from '../crm/crm.queue.service';
 
 export interface NotifyUserParams {
   userId: string;
@@ -25,6 +26,7 @@ export class NotificationsService {
     private emailProvider: EmailProvider,
     @InjectQueue('notifications')
     private notificationQueue: Queue,
+    private crmQueue: CrmQueueService,
   ) {}
 
   async notify(params: NotifyUserParams): Promise<void> {
@@ -51,6 +53,7 @@ export class NotificationsService {
             variables: params.variables,
             language: params.language,
           });
+          await this.trackDelivery('email_sent', channel, params);
         }
 
         if (channel === 'whatsapp' && params.phone) {
@@ -60,6 +63,7 @@ export class NotificationsService {
             variables: params.variables,
             language: params.language,
           });
+          await this.trackDelivery('whatsapp_sent', channel, params);
         }
 
         if (channel === 'sms' && params.phone) {
@@ -69,11 +73,27 @@ export class NotificationsService {
             variables: params.variables,
             language: params.language,
           });
+          await this.trackDelivery('sms_sent', channel, params);
         }
       } catch (error) {
         this.logger.error(`Failed to send ${channel} notification: ${error}`);
       }
     }
+  }
+
+  private trackDelivery(
+    type: 'email_sent' | 'whatsapp_sent' | 'sms_sent',
+    channel: 'email' | 'whatsapp' | 'sms',
+    params: NotifyUserParams,
+  ): Promise<void> {
+    return this.crmQueue.trackInteraction({
+      userId: params.userId,
+      email: params.email,
+      type,
+      channel,
+      subject: `Notification: ${params.type}`,
+      metadata: { notificationType: params.type, language: params.language },
+    });
   }
 
   // Convenience methods

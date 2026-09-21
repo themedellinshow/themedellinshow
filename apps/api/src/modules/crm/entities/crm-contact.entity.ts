@@ -94,6 +94,46 @@ export class CrmContact {
   @Column({ type: 'text', nullable: true })
   notes: string;
 
+  // Administrative / demographic enrichment
+  @Column({ nullable: true })
+  company: string;
+
+  @Column({ nullable: true })
+  jobTitle: string;
+
+  @Column({ nullable: true })
+  timezone: string;
+
+  @Column({ nullable: true })
+  pronouns: string;
+
+  @Column({ type: 'date', nullable: true })
+  birthDate: string;
+
+  // Compliance & engagement
+  @Column({ default: false })
+  doNotContact: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  unsubscribedAt: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastEmailOpenAt: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastWhatsappReplyAt: Date | null;
+
+  // Lead scoring
+  @Column({ type: 'int', default: 0 })
+  leadScore: number;
+
+  // Pipeline / stage placement
+  @Column({ type: 'uuid', nullable: true })
+  pipelineId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  stageId: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
