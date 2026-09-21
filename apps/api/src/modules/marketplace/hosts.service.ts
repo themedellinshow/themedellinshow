@@ -118,11 +118,22 @@ export class HostsService {
     return this.hostRepo.save(profile);
   }
 
-  async setPayoutInfo(userId: string, last4: string): Promise<HostProfile> {
+  async setPayoutInfo(
+    userId: string,
+    info: {
+      last4: string;
+      payoutCurrency?: string;
+      fiscalDocumentType?: string;
+      fiscalCountry?: string;
+    },
+  ): Promise<HostProfile> {
     const profile = await this.findByUserId(userId);
     if (!profile) throw new NotFoundException('Host profile not found');
-    profile.bankAccountLast4 = last4;
+    profile.bankAccountLast4 = info.last4;
     profile.payoutSetupComplete = true;
+    if (info.payoutCurrency) profile.payoutCurrency = info.payoutCurrency;
+    if (info.fiscalDocumentType) profile.fiscalDocumentType = info.fiscalDocumentType;
+    if (info.fiscalCountry) profile.fiscalCountry = info.fiscalCountry;
     return this.hostRepo.save(profile);
   }
 }

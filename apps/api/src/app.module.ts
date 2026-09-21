@@ -17,6 +17,8 @@ import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { PartnersModule } from './modules/partners/partners.module';
 import { ReferralsModule } from './modules/referrals/referrals.module';
+import { PayoutsModule } from './modules/payouts/payouts.module';
+import { WalletModule } from './modules/wallet/wallet.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
@@ -86,6 +88,8 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     CrmModule,
     PartnersModule,
     ReferralsModule,
+    PayoutsModule,
+    WalletModule,
     AnalyticsModule,
   ],
 })

@@ -12,6 +12,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { HostsService } from './hosts.service';
 import { CreateHostProfileDto } from './dto/create-host-profile.dto';
+import { UpdateHostPayoutDto } from './dto/update-host-payout.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -70,8 +71,8 @@ export class HostsController {
   @Patch('me/payout')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('host', 'admin')
-  async setPayout(@CurrentUser() user: User, @Body('last4') last4: string) {
-    return this.hostsService.setPayoutInfo(user.id, last4);
+  async setPayout(@CurrentUser() user: User, @Body() dto: UpdateHostPayoutDto) {
+    return this.hostsService.setPayoutInfo(user.id, dto);
   }
 
   // Admin

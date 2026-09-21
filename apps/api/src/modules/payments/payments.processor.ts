@@ -27,11 +27,12 @@ export class PaymentsProcessor {
       return;
     }
 
-    // First paid booking of a referred user rewards both sides via Hektor credit.
+    // First paid booking of a referred user grants the referrer a pending
+    // wallet credit (10% of the purchase, capped) once confirmed.
     if (payment.booking) {
       await this.referralsService.fulfillOnQualifyingBooking(
         payment.booking.travelerId,
-        payment.booking.id,
+        { id: payment.booking.id, totalCop: Number(payment.booking.totalCop) },
       );
     }
   }
@@ -39,6 +40,7 @@ export class PaymentsProcessor {
   @Process('payout-host')
   async handleHostPayout(job: Job<{ hostId: string; amount: number }>) {
     this.logger.log(`Processing host payout: ${job.data.hostId}`);
-    // TODO: Process payout to host bank account
+    // Deprecated legacy job. Weekly host payouts are now handled by the
+    // PayoutBatchScheduler (host_payouts ledger) — see PayoutsModule.
   }
 }

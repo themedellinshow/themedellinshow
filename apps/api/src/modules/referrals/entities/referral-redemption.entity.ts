@@ -55,6 +55,16 @@ export class ReferralRedemption {
   @Column({ nullable: true })
   sourceContext: string; // e.g. "signup-form", "sharable-link"
 
+  // Anti-fraud signals captured at redeem time (no single signal is definitive)
+  @Column({ nullable: true })
+  redeemedAtIp: string;
+
+  @Column({ nullable: true })
+  redeemedAtUserAgent: string;
+
+  @Column({ type: 'varchar', default: 'clear' })
+  riskStatus: 'clear' | 'pending_review';
+
   @CreateDateColumn()
   createdAt: Date;
 

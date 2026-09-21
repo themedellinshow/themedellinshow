@@ -9,6 +9,7 @@ import { StripeProvider } from './providers/stripe.provider';
 import { BookingsModule } from '../bookings/bookings.module';
 import { CrmModule } from '../crm/crm.module';
 import { ReferralsModule } from '../referrals/referrals.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ReferralsModule } from '../referrals/referrals.module';
     forwardRef(() => BookingsModule),
     CrmModule,
     ReferralsModule,
+    WalletModule,
   ],
   controllers: [PaymentsController],
   providers: [

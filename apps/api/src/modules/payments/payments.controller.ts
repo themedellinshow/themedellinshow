@@ -27,8 +27,9 @@ export class PaymentsController {
   async initiatePayment(
     @CurrentUser() user: User,
     @Body('bookingId', ParseUUIDPipe) bookingId: string,
+    @Body('creditCop') creditCop?: number,
   ) {
-    return this.paymentsService.initiatePayment(bookingId, user.id);
+    return this.paymentsService.initiatePayment(bookingId, user.id, Number(creditCop ?? 0));
   }
 
   @Post(':id/confirm')

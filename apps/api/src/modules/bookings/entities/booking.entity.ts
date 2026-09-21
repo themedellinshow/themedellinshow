@@ -79,6 +79,16 @@ export class Booking {
   @Column({ type: 'varchar', default: 'pending' })
   status: BookingStatus;
 
+  // Dispute lifecycle (holds payouts while open)
+  @Column({ type: 'timestamp', nullable: true })
+  disputedAt: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  disputeResolvedAt: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  disputeResolution: string | null;
+
   // Special requests
   @Column({ type: 'text', nullable: true })
   specialRequests: string;

@@ -7,6 +7,7 @@ import { Booking, BookingStatus } from './entities/booking.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { ExperiencesService } from '../experiences/experiences.service';
 import { CrmQueueService } from '../crm/crm.queue.service';
+import { PayoutsService } from '../payouts/payouts.service';
 import { randomBytes } from 'crypto';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class BookingsService {
     private bookingRepo: Repository<Booking>,
     private expService: ExperiencesService,
     private crmQueue: CrmQueueService,
+    private payoutsService: PayoutsService,
     @InjectQueue('bookings')
     private bookingQueue: Queue,
   ) {}
@@ -148,6 +150,62 @@ export class BookingsService {
 
     const saved = await this.bookingRepo.save(booking);
     await this.trackBooking('completed', saved);
+
+    // Open the host payout release window (held until completion + 72h).
+    if (saved.hostId) {
+      await this.payoutsService.openReleaseWindow(saved);
+    }
+
+    return saved;
+  }
+
+  async openDispute(
+    id: string,
+    userId: string,
+    role: string,
+    reason: string,
+  ): Promise<Booking> {
+    const booking = await this.findById(id);
+    const authorized = booking.travelerId === userId || role === 'admin';
+    if (!authorized) {
+      throw new ForbiddenException('Not authorized');
+    }
+    if (booking.status !== 'paid' && booking.status !== 'completed') {
+      throw new BadRequestException('Booking cannot be disputed in its current state');
+    }
+    if (booking.disputedAt && !booking.disputeResolvedAt) {
+      throw new BadRequestException('Booking is already under dispute');
+    }
+
+    booking.disputedAt = new Date();
+    booking.disputeResolvedAt = null;
+    booking.disputeResolution = reason;
+    return this.bookingRepo.save(booking);
+  }
+
+  /**
+   * Resolves an open dispute. Refund-based resolutions enqueue the async
+   * refund pipeline; the host payout remains held until the 72h window and
+   * dispute state allow its release.
+   */
+  async resolveDispute(
+    id: string,
+    resolution: 'resolved_without_refund' | 'full_refund' | 'partial_refund',
+    note?: string,
+  ): Promise<Booking> {
+    const booking = await this.findById(id);
+    if (!booking.disputedAt || booking.disputeResolvedAt) {
+      throw new BadRequestException('Booking has no open dispute');
+    }
+
+    booking.disputeResolvedAt = new Date();
+    booking.disputeResolution = `${resolution}${note ? `: ${note}` : ''}`;
+    const saved = await this.bookingRepo.save(booking);
+
+    if (resolution !== 'resolved_without_refund' && booking.paidAt) {
+      await this.bookingQueue.add('process-refund', { bookingId: booking.id });
+    }
+
     return saved;
   }
 
@@ -164,6 +222,9 @@ export class BookingsService {
     booking.cancellationReason = reason;
 
     const saved = await this.bookingRepo.save(booking);
+
+    // A cancelled booking never pays the host.
+    await this.payoutsService.voidForBooking(booking.id);
 
     // Queue refund after persistence so the async refund lands on the final status
     if (booking.paidAt) {

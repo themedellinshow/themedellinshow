@@ -70,4 +70,24 @@ export class BookingsController {
   ) {
     return this.bookingsService.cancel(id, user.id, reason);
   }
+
+  @Post(':id/dispute')
+  async openDispute(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+    @Body('reason') reason: string,
+  ) {
+    return this.bookingsService.openDispute(id, user.id, user.role, reason);
+  }
+
+  @Post(':id/dispute/resolve')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  async resolveDispute(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('resolution') resolution: 'resolved_without_refund' | 'full_refund' | 'partial_refund',
+    @Body('note') note?: string,
+  ) {
+    return this.bookingsService.resolveDispute(id, resolution, note);
+  }
 }

@@ -1,9 +1,25 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Referral, ReferralStatus } from './entities/referral.entity';
 import { ReferralRedemption } from './entities/referral-redemption.entity';
+import { ReferralRiskService } from './referral-risk.service';
+import { WalletService } from '../wallet/wallet.service';
 
+/**
+ * Referral program.
+ *
+ * Business rules (normative, see docs/business-rules/payouts-and-referrals.md):
+ * - Reward = 10% of the referred user's first purchase, capped at COP $100.000.
+ * - The credit is granted as PENDING and only becomes available once the
+ *   qualifying purchase is completed and past the 72h refund/dispute window.
+ * - Anti-fraud: suspicious redemptions stay "pending_review" for manual review.
+ */
 @Injectable()
 export class ReferralsService {
   private static readonly CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
@@ -13,6 +29,8 @@ export class ReferralsService {
     private referralRepo: Repository<Referral>,
     @InjectRepository(ReferralRedemption)
     private redemptionRepo: Repository<ReferralRedemption>,
+    private riskService: ReferralRiskService,
+    private walletService: WalletService,
   ) {}
 
   /** Create or fetch the user's referral program handle. */
@@ -29,8 +47,15 @@ export class ReferralsService {
     return this.referralRepo.save(referral);
   }
 
-  /** Redeem a code for the given (already registered) user. */
-  async redeem(userId: string, dto: { code: string; sourceContext?: string }): Promise<ReferralRedemption> {
+  /**
+   * Redeem a code for the given (already registered) user.
+   * Captures device/IP signals and runs the anti-fraud risk check.
+   */
+  async redeem(
+    userId: string,
+    dto: { code: string; sourceContext?: string },
+    ctx: { ip?: string; userAgent?: string } = {},
+  ): Promise<ReferralRedemption> {
     const code = dto.code.trim().toUpperCase();
 
     // Nobody references themselves
@@ -44,11 +69,21 @@ export class ReferralsService {
     const already = await this.redemptionRepo.findOne({ where: { referralId: referral.id, referredUserId: userId } });
     if (already) throw new ConflictException('Referral code already redeemed by this user');
 
+    const riskStatus = await this.riskService.evaluate({
+      referralId: referral.id,
+      referredUserId: userId,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
+
     const redemption = this.redemptionRepo.create({
       referralId: referral.id,
       referredUserId: userId,
       status: 'pending',
       sourceContext: dto.sourceContext,
+      redeemedAtIp: ctx.ip,
+      redeemedAtUserAgent: ctx.userAgent ? ctx.userAgent.slice(0, 255) : undefined,
+      riskStatus,
       expiresAt: new Date(Date.now() + 365 * 24 * 3600 * 1000), // 1 year
     });
 
@@ -61,34 +96,70 @@ export class ReferralsService {
   }
 
   /**
-   * Called from BookingsService after first *paid* booking of the
-   * referred user closes. Rewards both sides via Hektor credit.
+   * Called after the first *paid* booking of the referred user closes.
+   * Grants a PENDING wallet credit to the referrer: 10% of the purchase,
+   * capped at REFERRAL_REWARD_CAP (default COP $100.000).
    */
-  async fulfillOnQualifyingBooking(userId: string, bookingId: string): Promise<void> {
+  async fulfillOnQualifyingBooking(
+    userId: string,
+    booking: { id: string; totalCop: number },
+  ): Promise<void> {
     const redemptions = await this.redemptionRepo.find({
       where: { referredUserId: userId, status: 'pending' },
     });
     if (!redemptions.length) return;
+
+    const rate = Number(process.env.REFERRAL_REWARD_RATE ?? 0.1);
+    const cap = Number(process.env.REFERRAL_REWARD_CAP ?? 100000);
+    const rewardCop = Math.min(Math.round(Number(booking.totalCop) * rate), cap);
 
     for (const redemption of redemptions) {
       const referral = await this.referralRepo.findOne({ where: { id: redemption.referralId } });
       if (!referral) continue;
 
       redemption.status = 'rewarded';
-      redemption.qualifyingBookingId = bookingId;
+      redemption.qualifyingBookingId = booking.id;
       redemption.rewardedAt = new Date();
       redemption.referredRewardCop = Number(referral.rewardAmountCop);
-      redemption.referrerRewardCop = Number(referral.referrerRewardCop);
+      redemption.referrerRewardCop = rewardCop;
       await this.redemptionRepo.save(redemption);
 
       referral.totalRewarded += 1;
-      referral.totalRewardsCop =
-        Number(referral.totalRewardsCop) + Number(referral.referrerRewardCop);
+      referral.totalRewardsCop = Number(referral.totalRewardsCop) + rewardCop;
       await this.referralRepo.save(referral);
 
-      // TODO(phase-9): credit wallet / issue up to the referred user too.
-      // This is the hook where wallet credit should be applied.
+      // Grant a PENDING credit; WalletService confirms it only after the
+      // purchase is completed and past the 72h refund/dispute window.
+      await this.walletService.grantPendingCredit({
+        referralId: referral.id,
+        redemptionId: redemption.id,
+        userId: referral.referrerUserId,
+        bookingId: booking.id,
+        amountCop: rewardCop,
+        riskStatus: redemption.riskStatus,
+      });
     }
+  }
+
+  /**
+   * Manual anti-fraud review: a suspicious redemption can be cleared (credit
+   * becomes confirmable) or voided (credit is voided).
+   */
+  async reviewRedemption(redemptionId: string, decision: 'clear' | 'void'): Promise<ReferralRedemption> {
+    const redemption = await this.redemptionRepo.findOne({ where: { id: redemptionId } });
+    if (!redemption) throw new NotFoundException('Redemption not found');
+    if (redemption.riskStatus !== 'pending_review') {
+      throw new BadRequestException('Redemption is not pending review');
+    }
+
+    if (decision === 'clear') {
+      redemption.riskStatus = 'clear';
+      await this.walletService.clearRiskForRedemption(redemption.id);
+    } else {
+      redemption.status = 'voided';
+      await this.walletService.voidForRedemption(redemption.id);
+    }
+    return this.redemptionRepo.save(redemption);
   }
 
   async getStats(userId: string) {
@@ -117,6 +188,7 @@ export class ReferralsService {
         id: r.id,
         referredUserId: r.referredUserId,
         status: r.status,
+        riskStatus: r.riskStatus,
         qualifyingBookingId: r.qualifyingBookingId,
         createdAt: r.createdAt,
       })),

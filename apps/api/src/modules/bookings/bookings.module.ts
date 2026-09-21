@@ -10,6 +10,7 @@ import { ExperiencesModule } from '../experiences/experiences.module';
 import { CrmModule } from '../crm/crm.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { PayoutsModule } from '../payouts/payouts.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { PaymentsModule } from '../payments/payments.module';
     CrmModule,
     NotificationsModule,
     forwardRef(() => PaymentsModule),
+    PayoutsModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService, BookingsProcessor, BookingsReminderScheduler],

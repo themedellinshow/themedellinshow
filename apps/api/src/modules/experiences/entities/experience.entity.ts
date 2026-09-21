@@ -54,6 +54,10 @@ export class Experience {
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   priceCop: number;
 
+  // Individual commission negotiation: overrides the category default for host payouts
+  @Column({ type: 'decimal', precision: 6, scale: 4, nullable: true })
+  payoutCommissionPercent: number;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   priceUsd: number;
 

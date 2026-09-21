@@ -43,6 +43,10 @@ export class Payment {
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   amount: number;
 
+  // Wallet credit applied at checkout (reduces the amount actually charged)
+  @Column({ type: 'decimal', precision: 14, scale: 2, default: 0 })
+  creditCop: number;
+
   @Column({ type: 'varchar' })
   currency: 'COP' | 'USD';
 

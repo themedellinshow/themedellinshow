@@ -88,6 +88,16 @@ export class HostProfile {
   @Column({ default: false })
   payoutSetupComplete: boolean;
 
+  // Payout/fiscal configuration (tax rules validated externally, not enforced here)
+  @Column({ type: 'varchar', default: 'COP' })
+  payoutCurrency: string;
+
+  @Column({ nullable: true })
+  fiscalDocumentType: string;
+
+  @Column({ nullable: true })
+  fiscalCountry: string;
+
   // Featured/super host status
   @Column({ default: false })
   featured: boolean;
