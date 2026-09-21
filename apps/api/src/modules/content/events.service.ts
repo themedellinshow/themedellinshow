@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThanOrEqual } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Event, EventCategory, EventStatus } from './entities/event.entity';
 
 export interface QueryEventsDto {

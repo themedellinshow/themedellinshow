@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { Payment, PaymentStatus } from './entities/payment.entity';
+import { Payment } from './entities/payment.entity';
 import { PaymentProvider } from './interfaces/payment-provider.interface';
 import { BookingsService } from '../bookings/bookings.service';
 import { CrmQueueService } from '../crm/crm.queue.service';
@@ -95,7 +95,7 @@ export class PaymentsService {
     }
 
     const refundAmount = amount || Number(payment.amount);
-    const result = await this.paymentProvider.refund(payment.providerPaymentId!, refundAmount);
+    await this.paymentProvider.refund(payment.providerPaymentId!, refundAmount);
 
     payment.refundedAmount = refundAmount;
     payment.refundReason = reason || 'Customer requested refund';

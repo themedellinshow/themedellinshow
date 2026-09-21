@@ -54,11 +54,12 @@ jobs:
         run: |
           npm run build -w packages/shared-types
           npm run build -w packages/shared-config
+          npm run build -w packages/ui-tokens
           npm run api:build
           npm run ai-gateway:build
 
-      - name: Test API
-        run: npm run api:test
+      - name: Test API (e2e)
+        run: npm run test:e2e -w apps/api
         env:
           NODE_ENV: test
           DB_HOST: localhost

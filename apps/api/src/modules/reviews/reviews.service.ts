@@ -144,7 +144,7 @@ export class ReviewsService {
   }
 
   private async updateExperienceRating(experienceId: string): Promise<void> {
-    const result = await this.reviewRepo
+    await this.reviewRepo
       .createQueryBuilder('review')
       .select('AVG(review.rating)', 'avg')
       .addSelect('COUNT(*)', 'count')

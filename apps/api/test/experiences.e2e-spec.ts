@@ -26,7 +26,6 @@ describe('ExperiencesController (e2e)', () => {
   let hostBToken: string;
   let travelerToken: string;
   let hostAId: string;
-  let hostBId: string;
   let experienceId: string;
 
   const createHostProfile = (token: string) =>
@@ -71,7 +70,6 @@ describe('ExperiencesController (e2e)', () => {
     const hostBRes = await register(hostB);
     hostBToken = hostBRes.body.accessToken;
     await createHostProfile(hostBToken).expect(201);
-    hostBId = (await app.get(DataSource).getRepository(User).findOneByOrFail({ email: hostB.email })).id;
 
     travelerToken = (await register(traveler)).body.accessToken;
   });

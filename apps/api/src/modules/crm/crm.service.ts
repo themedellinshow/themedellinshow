@@ -9,7 +9,6 @@ import {
 import {
   CrmInteraction,
   InteractionType,
-  InteractionChannel,
 } from './entities/crm-interaction.entity';
 import { ConsentsDto } from './dto/consents.dto';
 import { LogInteractionDto } from './dto/log-interaction.dto';

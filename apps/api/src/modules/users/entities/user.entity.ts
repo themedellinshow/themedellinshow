@@ -4,7 +4,6 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany,
 } from 'typeorm';
 
 export type UserRole = 'traveler' | 'host' | 'companion' | 'partner' | 'admin';

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Referral, ReferralStatus } from './entities/referral.entity';
-import { ReferralRedemption, RedemptionStatus } from './entities/referral-redemption.entity';
+import { ReferralRedemption } from './entities/referral-redemption.entity';
 
 @Injectable()
 export class ReferralsService {

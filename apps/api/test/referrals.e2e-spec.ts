@@ -183,7 +183,6 @@ describe('ReferralsController (e2e)', () => {
         .get('/api/v1/referrals/me')
         .set('Authorization', `Bearer ${referrerToken}`)
         .expect(200);
-      const redeemed = res.body.redemptions.find((r: any) => r.id);
       return res.body.totalRewarded >= 1 ? res.body : null;
     }, 8000);
 

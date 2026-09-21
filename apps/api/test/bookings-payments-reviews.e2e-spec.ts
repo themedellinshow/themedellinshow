@@ -23,7 +23,6 @@ describe('Bookings-Payments-Reviews (e2e)', () => {
   let hostBToken: string;
   let travelerToken: string;
   let traveler2Token: string;
-  let hostAId: string;
 
   let expActiveId: string;
   let expDraftId: string;
@@ -98,7 +97,7 @@ describe('Bookings-Payments-Reviews (e2e)', () => {
     await app.get(DataSource).getRepository(User).update({ email: admin.email }, { role: 'admin' });
 
     hostAToken = (await register(hostA)).body.accessToken;
-    hostAId = await makeHost(hostAToken);
+    await makeHost(hostAToken);
     hostBToken = (await register(hostB)).body.accessToken;
     await makeHost(hostBToken);
 

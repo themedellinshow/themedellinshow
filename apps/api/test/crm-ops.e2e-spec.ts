@@ -161,7 +161,7 @@ describe('CRM operations (tags, merge, dashboard, automations) (e2e)', () => {
       expect(merged.body.id).toBe(contactBId);
       expect(merged.body.tags).toEqual(expect.arrayContaining(['alpha', 'beta', 'gamma']));
 
-      const source = await adminGet(`/api/v1/crm/contacts/${contactAId}`).expect(404);
+      await adminGet(`/api/v1/crm/contacts/${contactAId}`).expect(404);
 
       const interactions = await adminGet(`/api/v1/crm/contacts/${contactBId}/interactions`).expect(200);
       expect(interactions.body.length).toBe(1);

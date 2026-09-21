@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Partner, PartnerStatus } from './entities/partner.entity';
 import { PartnerAttribution } from './entities/partner-attribution.entity';
 import { CreatePartnerDto } from './dto/create-partner.dto';

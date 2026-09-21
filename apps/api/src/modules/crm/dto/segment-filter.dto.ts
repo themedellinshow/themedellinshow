@@ -1,5 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, ValidateNested, IsIn, IsInt, Min, ArrayUnique, IsBoolean } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsIn, IsInt, Min, ArrayUnique, IsBoolean } from 'class-validator';
 import { LifecycleStage, LeadSource } from '../entities/crm-contact.entity';
 
 export class SegmentFilterDto {
