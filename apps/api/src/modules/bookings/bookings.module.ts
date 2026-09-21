@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { Booking } from './entities/booking.entity';
@@ -7,6 +7,8 @@ import { BookingsController } from './bookings.controller';
 import { BookingsProcessor } from './bookings.processor';
 import { ExperiencesModule } from '../experiences/experiences.module';
 import { CrmModule } from '../crm/crm.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { CrmModule } from '../crm/crm.module';
     BullModule.registerQueue({ name: 'bookings' }),
     ExperiencesModule,
     CrmModule,
+    NotificationsModule,
+    forwardRef(() => PaymentsModule),
   ],
   controllers: [BookingsController],
   providers: [BookingsService, BookingsProcessor],

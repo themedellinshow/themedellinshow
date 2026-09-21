@@ -296,6 +296,37 @@ describe('Bookings-Payments-Reviews (e2e)', () => {
         .set('Authorization', `Bearer ${travelerToken}`)
         .expect(400);
     });
+
+    it('should auto-refund a paid booking that gets cancelled (async pipeline)', async () => {
+      const booking = await createBooking(travelerToken, expActiveId, `bpr-are-${stamp}@test.co`).expect(201);
+      await request(app.getHttpServer())
+        .patch(`/api/v1/bookings/${booking.body.id}/confirm`)
+        .set('Authorization', `Bearer ${hostAToken}`)
+        .expect(200);
+      const payment = await pay(travelerToken, booking.body.id);
+      expect(payment.status).toBe('completed');
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/bookings/${booking.body.id}/cancel`)
+        .set('Authorization', `Bearer ${travelerToken}`)
+        .send({ reason: 'Plan changed' })
+        .expect(200);
+
+      await waitFor(async () => {
+        const res = await request(app.getHttpServer())
+          .get(`/api/v1/payments/booking/${booking.body.id}`)
+          .set('Authorization', `Bearer ${travelerToken}`)
+          .expect(200);
+        const latest = res.body.find((p: any) => p.id === payment.id);
+        return latest?.status === 'refunded' && latest?.refundedAt ? latest : null;
+      }, 15000);
+
+      const after = await request(app.getHttpServer())
+        .get(`/api/v1/bookings/${booking.body.id}`)
+        .set('Authorization', `Bearer ${travelerToken}`)
+        .expect(200);
+      expect(after.body.status).toBe('refunded');
+    });
   });
 
   describe('reviews', () => {
@@ -401,3 +432,18 @@ describe('Bookings-Payments-Reviews (e2e)', () => {
     });
   });
 });
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitFor<T>(fn: () => Promise<T | null>, timeoutMs: number, stepMs = 300): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  let last: T | null = null;
+  while (Date.now() < deadline) {
+    last = await fn();
+    if (last != null) return last;
+    await sleep(stepMs);
+  }
+  throw new Error(`waitFor timed out after ${timeoutMs}ms`);
+}

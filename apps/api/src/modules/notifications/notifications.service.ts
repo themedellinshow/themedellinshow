@@ -167,4 +167,21 @@ export class NotificationsService {
       channels: ['email', 'whatsapp'],
     });
   }
+
+  async notifyBookingReminder(booking: any, traveler: any): Promise<void> {
+    await this.notify({
+      userId: traveler.id,
+      email: traveler.email,
+      phone: traveler.phone,
+      type: 'BOOKING_REMINDER',
+      variables: {
+        name: traveler.firstName,
+        experienceName: booking.experience?.titleEn || '',
+        time: booking.startTime,
+        meetingPoint: booking.experience?.meetingPointEn || '',
+      },
+      language: traveler.preferredLanguage,
+      channels: ['email', 'whatsapp'],
+    });
+  }
 }

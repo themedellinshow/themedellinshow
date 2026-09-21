@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { Payment } from './entities/payment.entity';
@@ -14,7 +14,7 @@ import { ReferralsModule } from '../referrals/referrals.module';
   imports: [
     TypeOrmModule.forFeature([Payment]),
     BullModule.registerQueue({ name: 'payments' }),
-    BookingsModule,
+    forwardRef(() => BookingsModule),
     CrmModule,
     ReferralsModule,
   ],

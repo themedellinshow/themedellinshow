@@ -163,12 +163,13 @@ export class BookingsService {
     booking.cancelledAt = new Date();
     booking.cancellationReason = reason;
 
-    // Queue refund if paid
+    const saved = await this.bookingRepo.save(booking);
+
+    // Queue refund after persistence so the async refund lands on the final status
     if (booking.paidAt) {
       await this.bookingQueue.add('process-refund', { bookingId: booking.id });
     }
 
-    const saved = await this.bookingRepo.save(booking);
     await this.trackBooking('cancelled', saved);
     return saved;
   }
